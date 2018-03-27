@@ -2,109 +2,116 @@
 
 <img src="./assets/flash.png" width="1000">
 
-## Introduction
+> 翻译自 [mgechev](https://github.com/mgechev) 大神的文章
+>
+> 原文链接：https://github.com/mgechev/angular-performance-checklist
 
-This document contains a list of practices which will help us boost the performance of our Angular applications. "Angular Performance Checklist" covers different topics - from server-side pre-rendering and bundling of our applications, to runtime performance and optimization of the change detection performed by the framework.
+## 介绍
 
-The document is divided into two main sections:
+本文档包含一系列实践，可帮助我们提升 Angular 应用程序的性能。 “Angular 性能检查表”涵盖了不同的主题 - 从服务器端预渲染和打包应用程序到运行时性能以及框架执行的变更检测优化。
 
-- Network performance - lists practices that are going to improve mostly the load time of our application. They include methods for latency and bandwidth reduction.
-- Runtime performance - practices which improve the runtime performance of our application. They include mostly change detection and rendering related optimizations.
+该文件分为两个主要部分：
 
-Some practices impact both categories so there could be a slight intersection, however, the differences in the use cases and the implications will be explicitly mentioned.
+* 网络性能 - 列出了将大大改善我们应用程序的加载时间的实践。它们包括延迟和带宽降低的方法。
+* 运行时性能 - 提高应用程序运行时性能的实践。它们主要包括更改检测和渲染相关的优化。
 
-Most subsections list tools, related to the specific practice, that can make us more efficient by automating our development flow.
+有些做法会影响到两个类别，因此可能会有一个小小的交集，但是，用例和含义的差异将被明确提及。
 
-Note that most practices are valid for both HTTP/1.1 and HTTP/2. Practices which make an exception will be mentioned by specifying to which version of the protocol they could be applied.
+大多数小节列出了与具体实践相关的工具，这些工具可以使我们的开发流程实现自动化，从而提高工作效率。
 
-## Table of Content
+请注意，大多数实践对于 HTTP/1.1 和 HTTP/2 均有效。通过指定可以应用哪种协议版本，将会提到做出例外的做法。
 
-- [Angular Performance Checklist](#angular-2-performance-checklist)
-  - [Introduction](#introduction)
-  - [Table of Content](#table-of-content)
-  - [Network performance](#network-performance)
-    - [Bundling](#bundling)
-    - [Minification and Dead code elimination](#minification-and-dead-code-elimination)
-    - [Remove template whitespace](#remove-template-whitespace)
+## 目录
+
+- [Angular 性能清单](#angular-性能清单)
+  - [介绍](#介绍)
+  - [目录](#目录)
+  - [网络性能](#网络性能)
+    - [打包](#打包)
+    - [压缩代码和死码消除](#压缩代码和死码消除)
+    - [删除模板的空格](#删除模板的空格)
     - [Tree-shaking](#tree-shaking)
-    - [Ahead-of-Time (AoT) Compilation](#ahead-of-time-aot-compilation)
-    - [Compression](#compression)
-    - [Pre-fetching Resources](#pre-fetching-resources)
-    - [Lazy-Loading of Resources](#lazy-loading-of-resources)
-    - [Don't lazy-load default route](#dont-lazy-load-the-default-route)
-    - [Caching](#caching)
-    - [Use Application Shell](#use-application-shell)
-    - [Use Service Workers](#use-service-workers)
-  - [Runtime Optimizations](#runtime-optimizations)
-    - [Use `enableProdMode`](#use-enableprodmode)
-    - [Ahead-of-Time Compilation](#ahead-of-time-compilation)
+    - [AoT(Ahead-of-Time) 编译](#aotahead-of-time-编译)
+    - [压缩](#压缩)
+    - [资源预获取](#资源预获取)
+    - [资源懒加载](#资源懒加载)
+    - [不要懒加载默认路由](#不要懒加载默认路由)
+    - [缓存](#缓存)
+    - [使用 Application Shell](#使用-application-shell)
+    - [使用 Service Workers](#使用-service-workers)
+  - [运行时优化](#运行时优化)
+    - [使用 `enableProdMode`](#使用-enableprodmode)
+    - [AoT(Ahead-of-Time) 编译](#aotahead-of-time-编译-1)
     - [Web Workers](#web-workers)
-    - [Server-Side Rendering](#server-side-rendering)
-    - [Change Detection](#change-detection)
+    - [服务端渲染](#服务端渲染)
+    - [变更检测](#变更检测)
       - [`ChangeDetectionStrategy.OnPush`](#changedetectionstrategyonpush)
-      - [Detaching the Change Detector](#detaching-the-change-detector)
-      - [Run outside Angular](#run-outside-angular)
-    - [Use pure pipes](#use-pure-pipes)
-    - [Use `trackBy` option for `*ngFor` directive](#use-trackby-option-for-ngfor-directive)
-- [Conclusion](#conclusion)
-- [Contributing](#contributing)
+      - [分离变更检测器](#分离变更检测器)
+      - [Angular Zone 上下文之外执行](#angular-zone-上下文之外执行)
+    - [使用纯管道](#使用纯管道)
+    - [为 `*ngFor` 指令使用 `trackBy` 选项](#为-ngfor-指令使用-trackby-选项)
+- [结论](#结论)
+- [贡献](#贡献)
+- [License](#license)
 
-## Network performance
+## 网络性能
 
-Some of the tools in this section are still in development and are subject to change. The Angular core team is working on automating the build process for our applications as much as possible so a lot of things will happen transparently.
+本节中的一些工具仍在开发中，可能会发生变化。 Angular核心团队正在尽可能地为我们的应用程序自动化构建过程，所以很多事情都会透明地发生。
 
-### Bundling
+### 打包
 
-Bundling is a standard practice aiming to reduce the number of requests that the browser needs to perform in order to deliver the application requested by the user. In essence, the bundler receives as an input a list of entry points and produces one or more bundles. This way, the browser can get the entire application by performing only a few requests, instead of requesting each individual resource separately.
+打包是一种标准的做法，旨在减少浏览器为了交付用户请求的应用程序而需要执行的请求数量。本质上，打包程序接收输入点列表并生成一个或多个 bundle。这样，浏览器就可以通过只执行一些请求来获取整个应用程序，而不是分别请求每个单独的资源。
 
-As your application grows bundling everything into a single large bundle would again be counter productive. Explore Code Splitting techniques using Webpack.
+随着您的应用程序增长，将所有内容捆绑到一个大型 bundle 中，它们将再次产生反作用。使用 Webpack 探索代码分割技术。
 
-**Additional http requests will not be a concern with HTTP/2 because of the [server push](https://http2.github.io/faq/#whats-the-benefit-of-server-push) feature.**
+**由于 HTTP/2 [服务器推送](https://http2.github.io/faq/#whats-the-benefit-of-server-push)功能，不需要关注附加的 http 请求。**
 
 **Tooling**
 
-Tools which allows us to bundle our applications efficiently are:
+允许我们高效打包我们的应用程序的工具有：
 
-- [Webpack](https://webpack.js.org) - provides efficient bundling by performing [tree-shaking](#tree-shaking).
-- [Webpack Code Splitting](https://webpack.js.org/guides/code-splitting/) - Techniques to split your code.
-- [Webpack & http2](https://medium.com/webpack/webpack-http-2-7083ec3f3ce6#.46idrz8kb) - Need for splitting with http2.
-- [Rollup](https://github.com/rollup/rollup) - provides bundling by performing efficient tree-shaking, taking advantage of the static nature of the ES2015 modules.
-- [Google Closure Compiler](https://github.com/google/closure-compiler) - performs plenty of optimizations and provides bundling support. Originally written in Java, since recently it also has a [JavaScript version](https://www.npmjs.com/package/google-closure-compiler-js) which can be [found here](https://www.npmjs.com/package/google-closure-compiler-js).
-- [SystemJS Builder](https://github.com/systemjs/builder) - provides a single-file build for SystemJS of mixed-dependency module trees.
+- [Webpack](https://webpack.js.org) - 提供 [tree-shaking](#tree-shaking) 有效的打包。
+- [Webpack Code Splitting](https://webpack.js.org/guides/code-splitting/) - 分割代码的技巧。.
+- [Webpack & http2](https://medium.com/webpack/webpack-http-2-7083ec3f3ce6#.46idrz8kb) - 使用 http2 分割代码。
+- [Rollup](https://github.com/rollup/rollup) - 利用ES2015模块的静态特性，通过 tree-shaking 提供有效的打包。
+- [Google Closure Compiler](https://github.com/google/closure-compiler) - 执行大量优化并提供打包支持。最初是用 Java 编写的，因为最近它也有一个 [JavaScript 版本](https://www.npmjs.com/package/google-closure-compiler-js)可以在[这里](https://www.npmjs.com/package/google-closure-compiler-js)找到。
+- [SystemJS Builder](https://github.com/systemjs/builder) - 为混合依赖模块树的 SystemJS 提供单文件构建。
 - [Browserify](http://browserify.org/).
 
-**Resources**
+**资源**
+
+
 
 - ["Building an Angular Application for Production"](http://blog.mgechev.com/2016/06/26/tree-shaking-angular2-production-build-rollup-javascript/)
 - ["2.5X Smaller Angular Applications with Google Closure Compiler"](http://blog.mgechev.com/2016/07/21/even-smaller-angular2-applications-closure-tree-shaking/)
 
-### Minification and dead code elimination
+### 压缩代码和死码消除
 
-These practices allow us to minimize the bandwidth consumption by reducing the payload of our application.
+这些做法使我们能够通过减少应用程序的有效负载来最小化带宽消耗。
 
-**Tooling**
+**工具**
 
-- [Uglify](https://github.com/mishoo/UglifyJS) - performs minification such as mangling variables, removal of comments & whitespace, dead code elimination, etc. Written completely in JavaScript, has plugins for all popular task runners.
-- [Google Closure Compiler](https://github.com/google/closure-compiler) - performs similar to uglify type of minification. In advanced mode it transforms the AST of our program aggressively in order to be able to perform even more sophisticated optimizations. It has also a [JavaScript version](https://www.npmjs.com/package/google-closure-compiler-js) which can be [found here](https://www.npmjs.com/package/google-closure-compiler-js). GCC also supports *most of the ES2015 modules syntax* so it can [perform tree-shaking](#tree-shaking).
+- [Uglify](https://github.com/mishoo/UglifyJS) - 执行压缩比如修改变量，删除注释和空白，删除死代码等。完全用JavaScript编写，为所有流行的任务运行者提供了插件。
+- [Google Closure Compiler](https://github.com/google/closure-compiler) - 执行类似于 uglify 压缩类型。在高级模式下，它积极地转换我们程序的AST，以便能够执行更复杂的优化。它也有一个[JavaScript版本](https://www.npmjs.com/package/google-closure-compiler-js)，可以在[这里](https://www.npmjs.com/package/google-closure-compiler-js)找到。 GCC 还支持大部分 ES2015 模块语法，因此可以执行 [tree-shaking](#tree-shaking)。
 
-**Resources**
+**资料**
 
 - ["Building an Angular Application for Production"](http://blog.mgechev.com/2016/06/26/tree-shaking-angular2-production-build-rollup-javascript/)
 - ["2.5X Smaller Angular Applications with Google Closure Compiler"](http://blog.mgechev.com/2016/07/21/even-smaller-angular2-applications-closure-tree-shaking/)
 
-### Remove template whitespace
+### 删除模板的空格
 
-Although we don't see the whitespace character (a character matching the `\s` regex) it is still represented by bytes which are transfered over the network. If we reduce the whitespace from our templates to minimum we will be respectively able to drop the bundle size of the AoT code even further.
+尽管我们没有看到空格字符（一个匹配`\s`正则表达式的字符），但它仍然是通过网络传输的字节表示的。如果我们将模板中的空白减少到最小，我们将分别能够进一步降低 AoT 代码的包大小。
 
-Thankfully, we don't have to do this manually. The `ComponentMetadata` interface provides the property `preserveWhitespaces` which by default has value `true`, because removing the whitespace always may influence the DOM layout. In case we set the property to `false` Angular will trim the unnecessary whitespace which will lead to further reduction of the bundle size.
+谢天谢地，我们不必手动执行此操作。 `ComponentMetadata` 接口提供属性 `preserveWhitespaces` ，默认值为 `true` ，因为删除空白总是会影响 DOM 布局。如果我们将该属性设置为 `false`，那么 Angular 将修剪不必要的空白，这将导致进一步缩小包的大小。
 
 - [preserveWhitespaces in the Angular docs](https://angular.io/api/core/Component#preserveWhitespaces)
 
 ### Tree-shaking
 
-For the final version of our applications we usually don't use the entire code which is provided by Angular and/or any third-party library, even the one that we've written. Thanks to the static nature of the ES2015 modules, we're able to get rid of the code which is not referenced in our apps.
+对于我们应用程序的最终版本，我们通常不使用 Angular 和/或任何第三方库提供的完整代码，即使是我们编写的代码。得益于 ES2015 模块的静态特性，我们能够摆脱我们应用中未引用的代码。
 
-**Example**
+**例子**
 
 ```javascript
 // foo.js
@@ -115,75 +122,75 @@ export bar = () => 'bar';
 import { foo } from './foo';
 console.log(foo());
 ```
-Once we tree-shake and bundle `app.js` we'll get:
+一旦我们 tree-shaking 和打包 `app.js`，我们会得到：
 
 ```javascript
 let foo = () => 'foo';
 console.log(foo());
 ```
 
-This means that the unused export `bar` will not be included into the final bundle.
+这意味着未使用的导出的 `bar` 将不会包含在最终 bundle 中。
 
-**Tooling**
+**工具**
 
-- [Webpack](https://webpack.js.org) - provides efficient bundling by performing [tree-shaking](#tree-shaking). Once the application has been bundled, it does not export the unused code so it can be safely considered as dead code and removed by Uglify.
-- [Rollup](https://github.com/rollup/rollup) - provides bundling by performing an efficient tree-shaking, taking advantage of the static nature of the ES2015 modules.
-- [Google Closure Compiler](https://github.com/google/closure-compiler) - performs plenty of optimizations and provides bundling support. Originally written in Java, since recently it has also a [JavaScript version](https://www.npmjs.com/package/google-closure-compiler-js) which can be [found here](https://www.npmjs.com/package/google-closure-compiler-js).
+- [Webpack](https://webpack.js.org) - 通过执行 tree-shaking 优化提供高效的打包。应用程序打包后，它不会导出未使用的代码，因此它可以安全地将其视为死代码并由 Uglify 删除。
+- [Rollup](https://github.com/rollup/rollup) - 利用 ES2015 模块的静态特性，通过执行高效的 tree-shaking 来打包。
+- [Google Closure Compiler](https://github.com/google/closure-compiler) - 执行大量优化并提供打包支持。最初是用 Java 编写的，因为最近它也有一个 [JavaScript 版本](https://www.npmjs.com/package/google-closure-compiler-js)可以在[这里](https://www.npmjs.com/package/google-closure-compiler-js)找到。
 
-*Note:* GCC does not support `export *` yet, which is essential for building Angular applications because of the heavy usage of the "barrel" pattern.
+*注意:* GCC 目前还不支持 `export *` 。这对于构建 Angular 应用程序非常重要，因为“barrel”模式的使用方法非常繁琐。
 
-**Resources**
+**资料**
 
 - ["Building an Angular Application for Production"](http://blog.mgechev.com/2016/06/26/tree-shaking-angular2-production-build-rollup-javascript/)
 - ["2.5X Smaller Angular Applications with Google Closure Compiler"](http://blog.mgechev.com/2016/07/21/even-smaller-angular2-applications-closure-tree-shaking/)
 
-### Ahead-of-Time (AoT) Compilation
+### AoT(Ahead-of-Time) 编译
 
-A challenge for the available in the wild tools (such as GCC, Rollup, etc.) are the HTML-like templates of the Angular components, which cannot be analyzed with their capabilities. This makes their tree-shaking support less efficient because they're not sure which directives are referenced within the templates. The AoT compiler transpiles the Angular HTML-like templates to JavaScript or TypeScript with ES2015 module imports. This way we are able to efficiently tree-shake during bundling and remove all the unused directives defined by Angular, third-party libraries or by ourselves.
+广泛的工具（如GCC，Rollup等）的可用性挑战是无法使用它们的功能进行分析 Angular 组件的类 HTML 模板。这使得他们的 tree-shaking 支持效率较低，因为他们不确定哪些指令在模板中被引用。 AoT 编译器通过 ES2015 模块导入将 Angular HTML 模板转换为 JavaScript 或 TypeScript。通过这种方式，我们可以在打包过程中高效地进行 tree-shake，并删除由 Angular、第三方库或我们自己定义的所有未使用的指令。
 
-**Tooling**
+**工具**
 
-- [@angular/compiler-cli](https://github.com/angular/angular/tree/master/modules/%40angular/compiler-cli) - a drop-in replacement for [tsc](https://www.npmjs.com/package/typescript) which statically analyzes our application and emits TypeScript/JavaScript for the component's templates.
+- [@angular/compiler-cli](https://github.com/angular/angular/tree/master/modules/%40angular/compiler-cli) - 代替 [tsc](https://www.npmjs.com/package/typescript) 静态分析我们的应用程序并为组件的模板输出 TypeScript / JavaScript。
 
-**Resources**
+**资料**
 
 - ["Ahead-of-Time Compilation in Angular"](http://blog.mgechev.com/2016/08/14/ahead-of-time-compilation-angular-offline-precompilation/)
 
-### Compression
+### 压缩
 
-Compression of the responses' payload is a standard practice for bandwidth usage reduction. By specifying the value of the header `Accept-Encoding`, the browser hints the server which compression algorithms are available on the client's machine. On the other hand, the server sets value for the `Content-Encoding` header of the response in order to tell the browser which algorithm has been chosen for compressing the response.
+压缩响应的有效载荷是减少带宽使用的标准做法。通过指定 `Accept-Encoding` 头的值，浏览器会提示服务器哪些压缩算法在客户机上可用。另一方面，服务器为响应的 `Content-Encoding` 头设置值，以便告诉浏览器选择了哪个算法来压缩响应。
 
-**Tooling**
+**工具**
 
-The tooling here is not Angular-specific and entirely depends on the web/application server that we're using. Typical compression algorithms are:
+这里的工具不是 Angular 特有的，完全取决于我们使用的 Web/应用程序服务器。典型的压缩算法有：
 
-- deflate - a data compression algorithm and associated file format that uses a combination of the LZ77 algorithm and Huffman coding.
-- [brotli](https://github.com/google/brotli) - a generic-purpose lossless compression algorithm that compresses data using a combination of a modern variant of the LZ77 algorithm, Huffman coding and 2nd order context modeling, with a compression ratio comparable to the best currently available general-purpose compression methods. It is similar in speed with deflate but offers more dense compression.
+- deflate - 一种数据压缩算法和相关的文件格式，它使用 LZ77 算法和霍夫曼编码的组合。
+- [brotli](https://github.com/google/brotli) - 一种通用的无损压缩算法，它使用 LZ77 算法的现代变体，霍夫曼编码和二阶上下文建模的压缩比数据压缩数据，其压缩比可与目前最好的通用压缩方法相媲美。速度与 deflate 类似，但提供更密集的压缩。
 
-*Note:* Brotli is [not widely supported yet](http://caniuse.com/#search=brotli).
+*注意:* Brotli [还没广泛支持](http://caniuse.com/#search=brotli).
 
-**Resources**
+**资料**
 
 - ["Better than Gzip Compression with Brotli"](https://hacks.mozilla.org/2015/11/better-than-gzip-compression-with-brotli/)
 - ["2.5X Smaller Angular Applications with Google Closure Compiler"](http://blog.mgechev.com/2016/07/21/even-smaller-angular2-applications-closure-tree-shaking/)
 
-### Pre-fetching Resources
+### 资源预获取
 
-Resource pre-fetching is a great way to improve the user experience. We can either pre-fetch assets (images, styles, modules intended to be [loaded lazily](#lazy-loading-of-resources), etc.) or data. There are different pre-fetching strategies but most of them depend on specifics of the application.
+资源预获取是改善用户体验的好方法。我们可以预先获取资源（图像，样式，打算[懒加载的模块](#资源懒加载)等）或数据。有不同的预取策略，但其中大部分取决于应用程序的细节。
 
-### Lazy-Loading of Resources
+### 资源懒加载
 
-In case the target application has a huge code base with hundreds of dependencies, the practices listed above may not help us reduce the bundle to a reasonable size (reasonable might be 100K or 2M, it again, completely depends on the business goals).
+如果目标应用程序具有数百个依赖关系的庞大代码库，上述做法可能无助于我们将捆绑包合理缩小（合理可能为100K或2M，它又完全取决于业务目标）。
 
-In such cases a good solution might be to load some of the application's modules lazily. For instance, lets suppose we're building an e-commerce system. In this case we might want to load the admin panel independently from the user-facing UI. Once the administrator has to add a new product we'd want to provide the UI required for that. This could be either only the "Add product page" or the entire admin panel, depending on our use case/business requirements.
+在这种情况下，一个好的解决方案可能是懒惰地加载一些应用程序的模块。例如，假设我们正在建立一个电子商务系统。在这种情况下，我们可能希望独立于面向用户的UI加载管理面板。一旦管理员必须添加新产品，我们希望提供所需的用户界面。这可能只是“添加产品页面”或整个管理面板，具体取决于我们的用例/业务需求。
 
-**Tooling**
+**工具**
 
-- [Webpack](https://github.com/webpack/webpack) - allows asynchronous module loading.
+- [Webpack](https://github.com/webpack/webpack) - 允许异步模块加载。
 
-### Don't Lazy-Load the Default Route
+### 不要懒加载默认路由
 
-Lets suppose we have the following routing configuration:
+让我们假设我们有以下路由配置：
 
 ```ts
 // Bad practice
@@ -194,53 +201,53 @@ const routes: Routes = [
 ];
 ```
 
-The first time the user opens the application using the url: https://example.com/ they will be redirected to `/dashboard` which will trigger the lazy-route with path `dashboard`. In order Angular to render the bootstrap component of the module, it will has to download the file `dashboard.module` and all of its dependencies. Later, the file needs to be parsed by the JavaScript VM and evaluated.
+用户第一次使用 url 为 https://example.com/ 打开应用程序时，它们将被重定向到 `/dashboard` ，这将触发具有路径 `dashboard` 的懒加载路由。为了呈现模块的引导组件，Angular 将不得不下载文件 `dashboard.module` 及其所有依赖项。之后，该文件需要由 JavaScript VM 分析并执行。
 
-Triggering extra HTTP requests and performing unnecessary computations during the initial page load is a bad practice since it slows down the initial page rendering. Consider declaring the default page route as non-lazy.
+在初始页面加载过程中触发额外的 HTTP 请求并执行不必要的计算是一种不好的做法，因为它会减慢初始页面的渲染速度。考虑将默认页面路由声明为非懒惰。
 
-### Caching
+### 缓存
 
-Caching is another common practice intending to speed-up our application by taking advantage of the heuristic that if one resource was recently been requested, it might be requested again in near future.
+缓存是另一种通常的做法，旨在通过利用启发式的方法来加速我们的应用程序，即如果最近有人要求提供某种资源，那么可能会在不久的将来再次提出要求。
 
-For caching data we usually use a custom caching mechanism. For caching static assets we can either use the standard browser caching or Service Workers with the [CacheStorage API](https://developer.mozilla.org/en-US/docs/Web/API/Cache).
+为了缓存数据，我们通常使用自定义缓存机制。为了缓存静态资源，我们可以用 [CacheStorage API](https://developer.mozilla.org/en-US/docs/Web/API/Cache) 来使用标准浏览器缓存或 Service Worker。
 
-### Use Application Shell
+### 使用 Application Shell
 
-To make the perceived performance of your application faster, use an [Application Shell](https://developers.google.com/web/updates/2015/11/app-shell).
+为了更快地提高应用程序的性能，请使用 [Application Shell](https://developers.google.com/web/updates/2015/11/app-shell)。
 
-The application shell is the minimum user interface that we show to the users in order to indicate them that the application will be delivered soon. For generating an application shell dynamically you can use Angular Universal with custom directives which conditionally show elements depending on the used rendering platform (i.e. hide everything except the App Shell when using `platform-server`).
+应用程序外壳是我们向用户展示的最低用户界面，以表示他们即将交付应用程序。为了动态生成应用程序外壳，您可以使用 Angular Universal 自定义指令，该指令根据使用的渲染平台来显示元素（即在使用 `platform-server` 时隐藏除 App Shell 外的所有内容）。
 
-**Tooling**
+**工具**
 
-- [Angular Mobile Toolkit](https://github.com/angular/mobile-toolkit) - aims to automate the process of managing Service Workers. It also contains Service Worker for caching static assets, and one for [generating application shell](https://developers.google.com/web/updates/2015/11/app-shell?hl=en).
-- [Angular Universal](https://github.com/angular/angular/tree/master/packages/platform-server) - Universal (isomorphic) JavaScript support for Angular.
+- [Angular Mobile Toolkit](https://github.com/angular/mobile-toolkit) - 旨在自动管理 Service Worder 的进程。它还包含用于缓存静态资源的 Service Worker，以及用于生成[应用程序外壳](#)的 Service Worker。
+- [Angular Universal](https://github.com/angular/angular/tree/master/packages/platform-server) - 对 Angular 的同构 JavaScript 支持。
 
-**Resources**
+**资料**
 
 - ["Instant Loading Web Apps with an Application Shell Architecture"](https://developers.google.com/web/updates/2015/11/app-shell)
 
-### Use Service Workers
+### 使用 Service Workers
 
-We can think of the Service Worker as an HTTP proxy which is located in the browser. All requests sent from the client are first intercepted by the Service Worker which can either handle them or pass them through the network.
+我们可以将 Service Worker 视为位于浏览器中的 HTTP 代理。客户端发送的所有请求首先被 Service Worker 拦截，Service Worder 可以直接处理它们或通过网络传递它们。
 
-**Tooling**
+**工具**
 
-- [Angular Mobile Toolkit](https://github.com/angular/mobile-toolkit) - aims to automate the process of managing Service Workers. It also contains Service Worker for caching static assets, and one for [generating application shell](https://developers.google.com/web/updates/2015/11/app-shell?hl=en).
-- [Offline Plugin for Webpack](https://github.com/NekR/offline-plugin) - Webpack plugin that adds support for Service Worker with a fall-back to AppCache.
+- [Angular Mobile Toolkit](https://github.com/angular/mobile-toolkit) - 旨在自动管理 Service Worder 的进程。它还包含用于缓存静态资源的 Service Worker，以及用于生成[应用程序外壳](#)的 Service Worker。
+- [Offline Plugin for Webpack](https://github.com/NekR/offline-plugin) - Webpack插件，可以将 Service Worker 的支持回退到 AppCache 中。
 
-**Resources**
+**资料**
 
 - ["The offline cookbook"](https://jakearchibald.com/2014/offline-cookbook/)
 
-## Runtime Optimizations
+## 运行时优化
 
-This section includes practices which can be applied in order to provide smoother user experience with 60 frames per second (fps).
+本部分包含可以应用的实践，以每秒 60 帧（fps）提供更流畅的用户体验。
 
-### Use `enableProdMode`
+### 使用 `enableProdMode`
 
-In development mode Angular performs some extra checks in order to verify that performing change detection does not result to any additional changes to any of the bindings. This way the frameworks assures that the unidirectional data flow has been followed.
+在开发模式中，Angular 会执行一些额外的检查，以验证执行变更检测不会导致对任何绑定进行任何其他更改。这样框架确保了单向数据流已经被遵循。
 
-In order to disable these changes for production to not forget to invoke `enableProdMode`:
+为了生产环境，需要禁止这些更改，不要忘记调用 `enableProdMode`。
 
 ```typescript
 import { enableProdMode } from '@angular/core';
@@ -250,79 +257,79 @@ if (ENV === 'production') {
 }
 ```
 
-### Ahead-of-Time Compilation
+### AoT(Ahead-of-Time) 编译
 
-AoT can be helpful not only for achieving more efficient bundling by performing tree-shaking, but also for improving the runtime performance of our applications. The alternative of AoT is Just-in-Time compilation (JiT) which is performed runtime, therefore we can reduce the amount of computations required for rendering of our application by performing the compilation as part of our build process.
+AoT 不仅可以通过执行 tree-shaking 来实现更高效的打包，还可以提高应用程序的运行时性能。 AoT的替代方案是在运行时执行的即时编译（JiT），因此我们可以通过将编译作为构建过程的一部分来减少呈现应用程序所需的计算量。
 
-**Tooling**
+**工具**
 
-- [@angular/compiler-cli](https://github.com/angular/angular/tree/master/modules/%40angular/compiler-cli) - a drop-in replacement for [tsc](https://www.npmjs.com/package/typescript) which statically analyzes our application and emits TypeScript/JavaScript for the component's templates.
-- [angular2-seed](https://github.com/mgechev/angular2-seed) - a starter project which includes support for AoT compilation.
-- [angular-cli](https://cli.angular.io) Using the `ng serve --prod`
+- [@angular/compiler-cli](https://github.com/angular/angular/tree/master/modules/%40angular/compiler-cli) - 代替 [tsc](https://www.npmjs.com/package/typescript) 静态分析我们的应用程序并为组件的模板输出 TypeScript / JavaScript。
+- [angular2-seed](https://github.com/mgechev/angular2-seed) - 一个启动项目，其中包括对 AoT 编译的支持。
+- [angular-cli](https://cli.angular.io) 使用 `ng serve --prod` 。
 
-**Resources**
+**资料**
 
 - ["Ahead-of-Time Compilation in Angular"](http://blog.mgechev.com/2016/08/14/ahead-of-time-compilation-angular-offline-precompilation/)
 
 ### Web Workers
 
-Usual problem in the typical single-page application (SPA) is that our code is usually run in a single thread. This means that if we want to achieve smooth user experience with 60fps we have **at most 16ms** for execution between the individual frames are being rendered, otherwise they'll drop by half.
+典型的单页面应用程序（SPA）中的常见问题是我们的代码通常运行在单个线程中。这意味着如果我们想要以 60fps 的速度实现流畅的用户体验，那么我们最多可以在 16ms 内执行各个帧之间的渲染，否则它们会下降一半。
 
-In complex application with huge component tree, where the change detection needs to perform millions of check each second it will not be hard to start dropping frames. Thanks to the platform agnosticism of Angular and it being decoupled from DOM architecture it's possible to run our entire application (including change detection) in a Web Worker and leave the main UI thread responsible only for rendering.
+在具有巨大组件树的复杂应用程序中，变更检测需要每秒执行数百万次检查，因此不会很难开始丢弃帧。感谢 Angular 的平台不可知性（agnosticism），并且它与DOM体系结构解耦，可以在 Web Worker 中运行我们的整个应用程序（包括更改检测），并让主 UI 线程仅负责渲染。
 
-**Tooling**
+**工具**
 
-- The module which allows us to run our application in a Web Worker is supported by the core team. Examples how it can be used, can be [found here](https://github.com/angular/angular/tree/master/modules/playground/src/web_workers).
-- [Webpack Web Worker Loader](https://github.com/webpack/worker-loader) - A Web Worker Loader for webpack.
+- 核心团队支持允许我们在 Web Worker 中运行应用程序的模块。示例如何使用，可以在[这里](https://github.com/angular/angular/tree/master/modules/playground/src/web_workers)找到。
+- [Webpack Web Worker Loader](https://github.com/webpack/worker-loader) - 一个 webpack 的 Web Worker Loader.
 
-**Resources**
+**资料**
 
 - ["Using Web Workers for more responsive apps"](https://www.youtube.com/watch?v=Kz_zKXiNGSE)
 
-### Server-Side Rendering
+### 服务端渲染
 
-A big issue of the traditional SPA is that they cannot be rendered until the entire JavaScript required for their initial rendering is available. This leads to two big problems:
+传统 SPA 的一大问题是，只有在初始渲染所需的全部 JavaScript 可用时才能渲染它们。这导致两个大问题：
 
-- Not all search engines are running the JavaScript associated to the page so they are not able to index the content of dynamic apps properly.
-- Poor user experience, since the user will see nothing more than a blank/loading screen until the JavaScript associated with the page is downloaded, parsed and executed.
+- 并非所有搜索引擎都运行与页面关联的 JavaScript，因此他们无法正确地为动态应用的内容进行索引。
+- 糟糕的用户体验，因为用户只会看到一个空白/加载中的屏幕，直到与页面相关的JavaScript被下载，解析并执行。
 
-Server-side rendering solves this issue by pre-rendering the requested page on the server and providing the markup of the rendered page during the initial page load.
+服务器端渲染通过在服务端上预先渲染请求的页面并在初始页面加载期间提供渲染页面的标签与样式来解决此问题。
 
-**Tooling**
+**工具**
 
-- [Angular Universal](https://github.com/angular/angular/tree/master/packages/platform-server) - Universal (isomorphic) JavaScript support for Angular.
-- [Preboot](https://github.com/angular/preboot) - Library to help manage the transition of state (i.e. events, focus, data) from a server-generated web view to a client-generated web view.
+- [Angular Universal](https://github.com/angular/angular/tree/master/packages/platform-server) - 对 Angular 的同构 JavaScript 支持。
+- [Preboot](https://github.com/angular/preboot) - 库帮助管理从服务器生成的Web视图到客户端生成的Web视图的状态转换（即事件，焦点，数据）。
 
-**Resources**
+**资料**
 
 - ["Angular Server Rendering"](https://www.youtube.com/watch?v=0wvZ7gakqV4)
 - ["Angular Universal Patterns"](https://www.youtube.com/watch?v=TCj_oC3m6_U)
 
-### Change Detection
+### 变更检测
 
-On each asynchronous event Angular performs change detection over the entire component tree. Although the code which detects for changes is optimized for [inline-caching](http://mrale.ph/blog/2012/06/03/explaining-js-vms-in-js-inline-caches.html), this still can be a heavy computation in complex applications. A way to improve the performance of the change detection is to not perform it for subtrees which are not supposed to be changed based on the recent actions.
+在每个异步事件上 Angular 在整个组件树上执行变更检测。虽然检测变化的代码已针对[内联缓存](http://mrale.ph/blog/2012/06/03/explaining-js-vms-in-js-inline-caches.html)进行了优化，但在复杂的应用程序中，这仍然是一项沉重的计算。提高变化检测性能的一种方法是不对基于最近操作不应该改变的子树执行它。
 
 #### `ChangeDetectionStrategy.OnPush`
 
-The `OnPush` change detection strategy allows us to disable the change detection mechanism for subtrees of the component tree. By setting the change detection strategy to any component to the value `ChangeDetectionStrategy.OnPush`, will make the change detection perform **only** when the component have received different inputs. Angular will consider inputs as different when it compares them with the previous inputs by reference, and the result of the reference check is `false`. In combination with [immutable data structures](https://facebook.github.io/immutable-js/) `OnPush` can bring great performance implications for such "pure" components.
+`OnPush` 变更检测策略允许我们禁用组件树的子树的变更检测机制。通过将任何组件的变更检测策略设置为 `ChangeDetectionStrategy.OnPush` 值，将使变更检测**仅仅**在组件接收到不同输入时执行。当 Angular 将它们与之前输入的引用值进行比较结果为 `false`时，Angular 将认为输入不同。结合[不可变的数据结构](https://facebook.github.io/immutable-js/) `OnPush` 可以为这些“纯”组件带来巨大的性能影响。
 
-**Resources**
+**资料**
 
 - ["Change Detection in Angular"](https://vsavkin.com/change-detection-in-angular-2-4f216b855d4c)
 
-#### Detaching the Change Detector
+#### 分离变更检测器
 
-Another way of implementing a custom change detection mechanism is by `detach`ing and `reattach`ing the change detector (CD) for given component. Once we `detach` the CD Angular will not perform check for the entire component subtree.
+实施自定义变化检测机制的另一种方式是通过分离（`detach`）和重新连接（`reattach`） 给定组件的变更检测器（CD）。一旦我们分离（`detach`）CD，Angular 将不会执行整个组件子树的检查。
 
-This practice is typically used when user actions or interactions with an external services trigger the change detection more often than required. In such cases we may want to consider detaching the change detector and reattaching it only when performing change detection is required.
+当用户操作或与外部服务的交互触发变更检测的次数超过需求时，通常会使用此实践。在这种情况下，我们可能需要考虑分离变化检测器并仅在需要执行变更检测时重新连接。
 
-#### Run outside Angular
+#### Angular Zone 上下文之外执行
 
-The Angular's change detection mechanism is being triggered thanks to [zone.js](https://github.com/angular/zone.js). Zone.js monkey patches all asynchronous APIs in the browser and triggers the change detection in the end of the execution of any async callback. In **rare cases** we may want given code to be executed outside the context of the Angular Zone and thus, without running change detection mechanism. In such cases we can use the method `runOutsideAngular` of the `NgZone` instance.
+感谢 [zone.js](https://github.com/angular/zone.js) 的功劳，Angular 的变化检测机制得以触发。 Zone.js 猴子补丁在浏览器中修补所有异步 API 在任何异步回调执行结束时触发更改检测。在**极少数情况**下，我们可能希望给出的代码在 Angular Zone 的上下文之外执行，而无需运行更改检测机制。在这种情况下，我们可以使用 `NgZone` 实例的 `runOutsideAngular` 方法。
 
-**Example**
+**例子**
 
-In the snippet below, you can see an example for a component which uses this practice. When the `_incrementPoints` method is called the component will start incrementing the `_points` property every 10ms (by default). The incrementation will make the illusion of an animation. Since in this case we don't want to trigger the change detection mechanism for the entire component tree, every 10ms, we can run `_incrementPoints` outside the context of the Angular's zone and update the DOM manually (see the `points` setter).
+在下面的代码片段中，您可以看到使用此实践的组件示例。当调用 `_incrementPoints` 方法时，组件将每10ms开始递增 `_points` 属性（默认情况下）。增加会出现动画。因为在这种情况下，我们不希望触发整个组件树的更改检测机制（每隔10ms），我们可以在 Angular Zone 的上下文之外运行 `_incrementPoints` 并手动更新DOM（请参阅 `points` 的 setter）。
 
 ```ts
 @Component({
@@ -381,11 +388,11 @@ class PointAnimationComponent {
 }
 ```
 
-**Warning**: Use this practice **very carefully only when you're sure what you are doing** because if not used properly it can lead to an inconsistent state of the DOM. Also note that the code above is not going to run in WebWorkers. In order to make it WebWorker-compatible, you need to set the label's value by using the Angular's renderer.
+**警告**：**仅在当你确定你在做什么的时候时**，**非常谨慎地**使用这个实践。因为如果使用不当，可能会导致 DOM 的不一致状态。还要注意，上面的代码不会在 WebWorkers 中运行。为了使其与 WebWorker 兼容，您需要使用 Angular 的渲染器来设置标签的值。
 
-### Use pure pipes
+### 使用纯管道
 
-As argument the `@Pipe` decorator accepts an object literal with the following format:
+`@Pipe` 装饰器接受具有以下格式的对象作为参数：
 
 ```typescript
 interface PipeMetadata {
@@ -394,19 +401,19 @@ interface PipeMetadata {
 }
 ```
 
-The pure flag indicates that the pipe is not dependent on any global state and does not produce side-effects. This means that the pipe will return the same output when invoked with the same input. This way Angular can cache the outputs for all the input parameters the pipe has been invoked with, and reuse them in order to not have to recompute them on each evaluation.
+`pure` 标识表示管道不依赖于任何全局状态，也不产生副作用。这意味着当使用相同的输入调用时，管道将返回相同的输出。通过这种方式，Angular可以缓存管道被调用的所有输入参数的输出，并重用它们以便不必在每次评估时重新计算它们。
 
-The default value of the `pure` property is `true`.
+`pure` 属性的默认值为 `true`。
 
-### Use `trackBy` option for `*ngFor` directive
+### 为 `*ngFor` 指令使用 `trackBy` 选项
 
-The `*ngFor` directive is used for rendering a collection. By default `*ngFor` identifies object uniqueness by reference.
+`*ngFor` 指令用于呈现集合。默认情况下，`*ngFor` 通过引用标识对象的唯一性。
 
-Which means when developer breaks reference to object during updating item's content Angular treats it as removal of the old object and addition of the new object. This effects in destroying old DOM node in the list and adding new DOM node on its place.
+这意味着开发人员在更新项目内容期间更改了对象的引用时，Angular 会将其视为删除旧对象并添加新对象。这会破坏列表中的旧 DOM 节点并在其位置添加新的 DOM 节点。
 
-Developer can provide a hint for angular how to identify object uniqueness: custom tracking function as the `trackBy` option for the `*ngFor` directive. Tracking function takes two arguments: `index` and `item`. Angular uses the value returned from tracking function to track items identity. It is very common to use ID of the particular record as the unique key.
+开发人员可以为 Angular 提供如何识别对象唯一性的提示：自定义跟踪函数作为 `*ngFor` 指令的 `trackBy` 选项。跟踪功能有两个参数：`index` 和 `item`。 Angular使用跟踪函数返回的值来跟踪对象的标识。使用特定记录的 ID 作为唯一 key 是很常见的。
 
-**Example**
+**例子**
 
 ```typescript
 @Component({
@@ -432,18 +439,18 @@ export class YtFeedComponent {
   }
 }
 ```
-**Resources**
+**资料**
 
-- ["NgFor directive"](https://angular.io/docs/ts/latest/api/common/index/NgFor-directive.html) - official documentation for `*ngFor`
-- ["Angular — Improve performance with trackBy"](https://netbasal.com/angular-2-improve-performance-with-trackby-cc147b5104e5) - shows gif demonstration of the approach
+- ["NgFor directive"](https://angular.io/docs/ts/latest/api/common/index/NgFor-directive.html) - `*ngFor` 官方文档介绍
+- ["Angular — Improve performance with trackBy"](https://netbasal.com/angular-2-improve-performance-with-trackby-cc147b5104e5) - 显示了该方法的 gif 演示
 
-# Conclusion
+# 结论
 
-The list of practices will dynamically evolve over time with new/updated practices. In case you notice something missing or you think that any of the practices can be improved do not hesitate to fire an issue and/or a PR. For more information please take a look at the "[Contributing](#contributing)" section below.
+随着时间的推移，实践清单将随着新的/更新的实践而动态演变。如果您发现某些缺失或您认为任何做法都可以改进，请不要犹豫，创建 ISSUE 和/或创建 PR 。欲了解更多信息，请看下面的“[贡献](https://github.com/mgechev/angular-performance-checklist#contributing)”部分。
 
-# Contributing
+# 贡献
 
-In case you notice something missing, incomplete or incorrect, a pull request will be greatly appreciated. For discussion of practices which are not included in the document please [open an issue](https://github.com/mgechev/angular2-performance-checklist/issues).
+如果您发现某些遗漏，不完整或不正确的情况，我们将非常感谢您提出申请。对于未包含在文档中的实践讨论，请[打开一个问题](https://github.com/mgechev/angular2-performance-checklist/issues)。
 
 # License
 
