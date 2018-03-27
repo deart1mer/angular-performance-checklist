@@ -1,4 +1,4 @@
-# Angular Performance Checklist
+# Angular 性能检查表
 
 <img src="./assets/flash.png" width="1000">
 
